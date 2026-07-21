@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LACA — Estudio de uñas · Una sesión en cinco actos</title>
+<meta name="description" content="LACA, estudio de uñas de autor. Chrome, cat-eye, arte a pincel. Un fashion film que se recorre con el scroll.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23120A0D'/%3E%3Cellipse cx='16' cy='18' rx='6' ry='9' fill='%23C21E3C'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;0,6..96,900;1,6..96,400;1,6..96,700;1,6..96,900&family=Archivo:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#120A0D;
+    --surface:#1D1115;
+    --ink:#F2E9E1;
+    --accent:#C21E3C;
+    --display:"Bodoni Moda",serif;
+    --body:"Archivo",sans-serif;
+    --mono:"Space Mono",monospace;
+    --letterbox:54px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{background:var(--bg);scrollbar-width:none}
+  html::-webkit-scrollbar{display:none}
+  html:focus-within{scroll-behavior:auto}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:var(--body);font-size:16px;line-height:1.6;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--accent);color:var(--ink)}
+  img{max-width:none}
+
+  /* ============ LENS STACK ============ */
+  #letterbox-top,#letterbox-bottom{
+    position:fixed;left:0;width:100%;height:var(--letterbox);
+    background:#0A0507;z-index:80;pointer-events:none;
+  }
+  #letterbox-top{top:0;transform-origin:top;transform:scaleY(0)}
+  #letterbox-bottom{bottom:0;transform-origin:bottom;transform:scaleY(0)}
+  #vignette{
+    position:fixed;inset:0;z-index:70;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 50%,rgba(6,2,4,.66) 100%);
+  }
+  #grain{
+    position:fixed;top:-60px;left:-60px;width:calc(100% + 120px);height:calc(100% + 120px);
+    z-index:75;pointer-events:none;opacity:.06;
+    background-repeat:repeat;mix-blend-mode:overlay;
+    will-change:transform;
+  }
+  #flash{
+    position:fixed;inset:0;z-index:85;pointer-events:none;opacity:0;
+    background:#F6EDE4;
+  }
+
+  /* ============ HUD ============ */
+  #hud{
+    position:fixed;top:0;left:0;width:100%;z-index:90;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:0 22px;height:var(--letterbox);
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;
+    color:rgba(242,233,225,.78);opacity:0;pointer-events:none;
+  }
+  #hud .hud-acto{color:var(--accent)}
+
+  /* ============ SUBTÍTULOS ============ */
+  #subtitles{
+    position:fixed;bottom:calc(var(--letterbox) + 54px);left:0;width:100%;
+    z-index:82;text-align:center;pointer-events:none;padding:0 8vw;
+  }
+  #sub-text{
+    display:inline-block;font-family:var(--display);font-style:italic;font-weight:400;
+    font-size:clamp(16px,1.8vw,23px);color:var(--ink);
+    text-shadow:0 1px 3px rgba(0,0,0,.95), 0 0 20px rgba(0,0,0,.7);
+    opacity:0;transition:opacity .45s cubic-bezier(.23,1,.32,1);
+  }
+  #sub-text.visible{opacity:1}
+
+  /* ============ PLAYER ============ */
+  #player{
+    position:fixed;bottom:0;left:0;width:100%;height:var(--letterbox);
+    z-index:95;display:flex;align-items:center;gap:16px;
+    padding:0 22px;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+    color:rgba(242,233,225,.82);opacity:0;pointer-events:none;
+  }
+  #player.on{pointer-events:auto}
+  #btn-play{
+    background:none;border:1px solid rgba(242,233,225,.35);color:var(--ink);
+    width:30px;height:30px;border-radius:50%;cursor:pointer;flex:0 0 auto;
+    display:grid;place-items:center;padding:0;
+    transition:border-color .18s cubic-bezier(.23,1,.32,1);
+  }
+  #btn-play:hover{border-color:var(--accent)}
+  #btn-play:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  #btn-play svg{display:block}
+  #timecode{flex:0 0 auto;min-width:86px}
+  #track{position:relative;flex:1 1 auto;height:26px;display:flex;align-items:center;cursor:pointer}
+  #track-rail{position:absolute;left:0;right:0;top:50%;height:2px;transform:translateY(-50%);background:rgba(242,233,225,.2)}
+  #track-fill{position:absolute;left:0;top:50%;height:2px;transform:translateY(-50%) scaleX(0);transform-origin:left;width:100%;background:var(--accent)}
+  #track-thumb{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;background:var(--ink);transform:translate(-50%,-50%);left:0;box-shadow:0 0 0 3px rgba(10,5,7,.85)}
+  .tick{position:absolute;top:50%;width:1px;height:9px;transform:translate(-50%,-50%);background:rgba(242,233,225,.5)}
+  #seek{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0}
+  #acto-label{flex:0 0 auto;color:var(--accent);white-space:nowrap}
+  @media (max-width:768px){ #acto-label{display:none} #timecode{min-width:70px} }
+
+  /* ============ ESCENAS ============ */
+  .scene{position:relative;height:100vh;overflow:hidden;background:var(--bg)}
+  .camera{position:absolute;inset:0;will-change:transform}
+  .scene-fade{position:absolute;inset:0;background:#060204;opacity:0;pointer-events:none;z-index:40}
+  .shot-title{
+    font-family:var(--display);font-weight:900;color:var(--ink);
+    line-height:.96;letter-spacing:.015em;
+  }
+  .shot-title .ch{display:inline-block;will-change:transform}
+  .mask-line{display:inline-block;overflow:hidden;vertical-align:bottom;padding-bottom:.1em}
+
+  /* fotografía tratada como metraje */
+  .footage{position:absolute;inset:-9%;overflow:hidden;will-change:transform}
+  .footage img{
+    width:100%;height:100%;object-fit:cover;display:block;
+    filter:saturate(.88) contrast(1.06) sepia(.08);
+  }
+  .footage::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(to bottom,rgba(18,10,13,.34),rgba(18,10,13,.12) 40%,rgba(18,10,13,.6) 100%);
+  }
+
+  /* --- ACTO I: LA MANO --- */
+  #mano-title{
+    position:absolute;top:50%;left:0;width:100%;text-align:center;z-index:10;
+    transform:translateY(-54%);
+    font-size:clamp(92px,20vw,300px);
+  }
+  #mano-tag{
+    position:absolute;top:29%;left:0;width:100%;text-align:center;z-index:10;
+    font-family:var(--mono);font-size:11px;letter-spacing:.55em;text-indent:.55em;
+    color:var(--ink);
+  }
+  #mano-sub{
+    position:absolute;bottom:22%;left:0;width:100%;text-align:center;z-index:10;
+    font-family:var(--display);font-style:italic;font-weight:400;
+    font-size:clamp(17px,2.2vw,27px);color:rgba(242,233,225,.92);
+  }
+
+  /* --- ACTO II: EL COLOR --- */
+  .wipe-panel{
+    position:absolute;inset:0;z-index:20;display:grid;place-items:center;
+    transform:translateX(101%);will-change:transform;
+  }
+  .wipe-panel .palabra{
+    font-family:var(--display);font-weight:900;font-size:clamp(56px,12vw,180px);
+    line-height:1;letter-spacing:.02em;
+  }
+  #panel-cereza{background:var(--accent)}
+  #panel-cereza .palabra{color:#F6EDE4}
+  #panel-leche{background:#F2E9E1}
+  #panel-leche .palabra{color:#120A0D}
+  #panel-chrome{background:linear-gradient(120deg,#8E8E96 0%,#E8E8F0 22%,#6F6F7A 44%,#F4F4FA 62%,#84848E 82%,#D9D9E4 100%)}
+  #panel-chrome .palabra{color:#1A1A22;mix-blend-mode:overlay}
+  #color-caption{
+    position:absolute;bottom:20%;left:0;width:100%;text-align:center;z-index:30;
+    font-family:var(--mono);font-size:11px;letter-spacing:.4em;text-indent:.4em;
+    color:rgba(242,233,225,.9);opacity:0;
+  }
+
+  /* --- ACTO III: EL ARTE (filmstrip) --- */
+  #scene-arte{background:#0C0709}
+  #strip-head{
+    position:absolute;top:16%;left:0;width:100%;text-align:center;z-index:10;
+    font-size:clamp(38px,7vw,96px);
+  }
+  #strip{
+    position:absolute;top:50%;left:0;transform:translateY(-42%);
+    display:flex;gap:5vw;padding:0 12vw;will-change:transform;
+  }
+  .frame{
+    flex:0 0 auto;width:min(46vh,68vw);position:relative;
+    background:#060204;padding:26px 10px;
+  }
+  .frame::before,.frame::after{
+    content:"";position:absolute;left:0;width:100%;height:14px;
+    background-image:radial-gradient(rgba(242,233,225,.85) 2.6px,transparent 3px);
+    background-size:26px 14px;background-position:center;background-repeat:repeat-x;
+  }
+  .frame::before{top:5px}
+  .frame::after{bottom:5px}
+  .frame .ph{aspect-ratio:3/4;overflow:hidden;position:relative}
+  .frame .ph img{
+    width:100%;height:100%;object-fit:cover;display:block;
+    filter:saturate(.9) contrast(1.05) sepia(.06);
+  }
+  .frame .toma{
+    position:absolute;bottom:-24px;left:10px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.22em;
+    color:rgba(242,233,225,.62);
+  }
+
+  /* --- ACTO IV: EL BRILLO --- */
+  #scene-brillo{background:#0A0608}
+  #glitter{position:absolute;inset:0;width:100%;height:100%;z-index:8}
+  #brillo-title{
+    position:absolute;top:50%;left:0;width:100%;text-align:center;z-index:10;
+    transform:translateY(-50%);
+    font-family:var(--display);font-weight:900;line-height:.95;
+    font-size:clamp(56px,11vw,170px);letter-spacing:.01em;
+    background:linear-gradient(105deg,#6F6F7A 0%,#F4F4FA 18%,#84848E 34%,#FFFFFF 50%,#6F6F7A 66%,#E8E8F0 84%,#8E8E96 100%);
+    background-size:250% 100%;
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  #brillo-tag{
+    position:absolute;top:33%;left:0;width:100%;text-align:center;z-index:10;
+    font-family:var(--mono);font-size:11px;letter-spacing:.5em;text-indent:.5em;
+    color:var(--accent);
+  }
+  #brillo-sub{
+    position:absolute;bottom:24%;left:0;width:100%;text-align:center;z-index:10;
+    font-family:var(--display);font-style:italic;font-weight:400;
+    font-size:clamp(16px,2vw,25px);color:rgba(242,233,225,.9);
+  }
+
+  /* --- ACTO V: LA CITA --- */
+  #scene-cita{background:var(--bg)}
+  #scene-cita .footage::after{
+    background:linear-gradient(to bottom,rgba(18,10,13,.78),rgba(18,10,13,.62) 50%,rgba(18,10,13,.85) 100%);
+  }
+  .precio-shot{
+    position:absolute;top:50%;left:0;width:100%;text-align:center;
+    transform:translateY(-50%);z-index:10;opacity:0;
+    text-shadow:0 2px 30px rgba(0,0,0,.9);
+  }
+  .precio-shot .servicio{
+    font-family:var(--display);font-weight:900;color:var(--ink);
+    font-size:clamp(44px,8.5vw,120px);line-height:1;
+  }
+  .precio-shot .desde{
+    font-family:var(--mono);font-size:clamp(11px,1.2vw,14px);
+    letter-spacing:.45em;text-indent:.45em;color:var(--accent);margin-top:12px;
+  }
+  #cita-final{
+    position:absolute;top:50%;left:0;width:100%;text-align:center;
+    transform:translateY(-50%);z-index:10;opacity:0;
+  }
+  #cita-final .pregunta{
+    font-family:var(--display);font-weight:900;font-style:italic;color:var(--ink);
+    font-size:clamp(40px,7.5vw,110px);line-height:1;margin-bottom:30px;
+  }
+  #cita-final .horario{
+    font-family:var(--mono);font-size:11px;letter-spacing:.32em;text-indent:.32em;
+    color:rgba(242,233,225,.7);margin-bottom:38px;
+  }
+  .cta{
+    display:inline-block;color:var(--ink);text-decoration:none;
+    border:1px solid rgba(242,233,225,.5);padding:17px 46px;
+    font-family:var(--mono);font-size:12px;letter-spacing:.28em;text-indent:.28em;
+    transition:background .2s cubic-bezier(.23,1,.32,1),color .2s cubic-bezier(.23,1,.32,1),border-color .2s cubic-bezier(.23,1,.32,1);
+  }
+  .cta:hover{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+  .cta:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  /* --- CRÉDITOS --- */
+  #scene-creditos{background:#060204}
+  #credits-col{position:absolute;left:0;width:100%;text-align:center;top:0;will-change:transform}
+  #credits-col .credit{margin:7vh 0}
+  #credits-col .rol{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.4em;text-indent:.4em;
+    color:var(--accent);margin-bottom:8px;
+  }
+  #credits-col .nombre{
+    font-family:var(--display);font-weight:700;font-size:clamp(22px,3vw,38px);color:var(--ink);
+  }
+  #endcard{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    text-align:center;opacity:0;z-index:10;width:100%;padding:0 6vw;
+  }
+  #endcard .marca{
+    font-family:var(--display);font-weight:900;color:var(--ink);
+    font-size:clamp(52px,10vw,140px);letter-spacing:.04em;
+  }
+  #endcard .lema{
+    font-family:var(--display);font-style:italic;font-weight:400;
+    color:rgba(242,233,225,.65);margin:14px 0 36px;font-size:clamp(15px,1.8vw,21px);
+  }
+
+  /* ============ REDUCED MOTION — versión editorial estática ============ */
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation:none!important;transition:none!important}
+  }
+  body.rm .scene{height:auto;min-height:100vh;display:grid;place-items:center;padding:14vh 6vw}
+  body.rm .camera{position:relative;inset:auto;min-height:70vh}
+  body.rm #player,body.rm #subtitles,body.rm #flash{display:none}
+  body.rm #letterbox-top,body.rm #letterbox-bottom{transform:scaleY(1)}
+  body.rm #hud{opacity:1}
+  body.rm .footage{position:absolute;inset:0}
+  body.rm .wipe-panel{position:relative;transform:none;min-height:40vh;margin:4vh 0}
+  body.rm #strip{position:relative;transform:none;flex-wrap:wrap;justify-content:center;padding:8vh 4vw}
+  body.rm .precio-shot,body.rm #cita-final{position:relative;transform:none;opacity:1;margin:7vh 0}
+  body.rm #endcard{position:relative;top:auto;left:auto;transform:none;opacity:1}
+  body.rm #credits-col{position:relative}
+</style>
+</head>
+<body>
+
+<!-- ============ HUD ============ -->
+<header id="hud" aria-hidden="true">
+  <span>LACA · ESTUDIO DE UÑAS · SESIÓN Nº 7</span>
+  <span class="hud-acto" id="hud-acto">ACTO I — LA MANO</span>
+</header>
+
+<!-- ============ LENS STACK ============ -->
+<div id="letterbox-top" aria-hidden="true"></div>
+<div id="letterbox-bottom" aria-hidden="true"></div>
+<div id="vignette" aria-hidden="true"></div>
+<div id="grain" aria-hidden="true"></div>
+<div id="flash" aria-hidden="true"></div>
+
+<!-- ============ SUBTÍTULOS ============ -->
+<div id="subtitles" aria-live="polite"><p id="sub-text"></p></div>
+
+<!-- ============ PELÍCULA ============ -->
+<main id="film">
+
+  <!-- ACTO I — LA MANO -->
+  <section class="scene" id="scene-mano" aria-label="Acto I: La mano">
+    <div class="camera">
+      <div class="footage" id="mano-footage">
+        <img src="https://images.pexels.com/photos/34997560/pexels-photo-34997560/free-photo-of-elegant-hand-with-french-manicure-on-red-velvet.jpeg?auto=compress&cs=tinysrgb&w=1600&h=1000&fit=crop"
+             alt="Mano con manicure francés sobre terciopelo rojo" referrerpolicy="no-referrer">
+      </div>
+      <p id="mano-tag">ESTUDIO DE UÑAS · SOLO CITA</p>
+      <h1 id="mano-title" class="shot-title" data-split>LACA</h1>
+      <p id="mano-sub">Toda sesión empieza con una mano desnuda.</p>
+    </div>
+    <div class="scene-fade"></div>
+  </section>
+
+  <!-- ACTO II — EL COLOR -->
+  <section class="scene" id="scene-color" aria-label="Acto II: El color">
+    <div class="camera">
+      <div class="footage" id="color-footage">
+        <img src="https://images.pexels.com/photos/1373747/pexels-photo-1373747.jpeg?auto=compress&cs=tinysrgb&w=1600"
+             alt="Frasco de esmalte con reflejo en fondo oscuro" loading="lazy" referrerpolicy="no-referrer">
+      </div>
+      <div class="wipe-panel" id="panel-cereza"><span class="palabra">CEREZA</span></div>
+      <div class="wipe-panel" id="panel-leche"><span class="palabra">LECHE</span></div>
+      <div class="wipe-panel" id="panel-chrome"><span class="palabra">CHROME</span></div>
+      <p id="color-caption">ELEGIR COLOR ES ELEGIR EL HUMOR DE LA SEMANA</p>
+    </div>
+    <div class="scene-fade"></div>
+  </section>
+
+  <!-- ACTO III — EL ARTE -->
+  <section class="scene" id="scene-arte" aria-label="Acto III: El arte">
+    <div class="camera">
+      <h2 id="strip-head" class="shot-title" data-split>EL ARTE</h2>
+      <div id="strip">
+        <div class="frame">
+          <div class="ph"><img src="https://images.pexels.com/photos/6135696/pexels-photo-6135696.jpeg?auto=compress&cs=tinysrgb&w=900&h=1200&fit=crop" alt="Pincel aplicando esmalte rojo" loading="lazy" referrerpolicy="no-referrer"></div>
+          <span class="toma">TOMA 00 · EL PINCEL</span>
+        </div>
+        <div class="frame">
+          <div class="ph"><img src="https://images.pexels.com/photos/34871556/pexels-photo-34871556/free-photo-of-stylish-red-manicure-on-fluffy-surface.jpeg?auto=compress&cs=tinysrgb&w=900" alt="Manicure rojo macro" loading="lazy" referrerpolicy="no-referrer"></div>
+          <span class="toma">TOMA 01 · CEREZA Nº 7</span>
+        </div>
+        <div class="frame">
+          <div class="ph"><img src="https://images.pexels.com/photos/34835283/pexels-photo-34835283/free-photo-of-close-up-of-artistic-pink-manicure-with-glitter.jpeg?auto=compress&cs=tinysrgb&w=900" alt="Manicure con glitter" loading="lazy" referrerpolicy="no-referrer"></div>
+          <span class="toma">TOMA 02 · AURORA CHROME</span>
+        </div>
+        <div class="frame">
+          <div class="ph"><img src="https://images.pexels.com/photos/34835304/pexels-photo-34835304/free-photo-of-stylish-leopard-print-and-black-nail-art.jpeg?auto=compress&cs=tinysrgb&w=900" alt="Nail art de leopardo y negro" loading="lazy" referrerpolicy="no-referrer"></div>
+          <span class="toma">TOMA 03 · VELVET CAT-EYE</span>
+        </div>
+        <div class="frame">
+          <div class="ph"><img src="https://images.pexels.com/photos/34885842/pexels-photo-34885842/free-photo-of-close-up-of-elegant-manicured-nails-with-floral-design.jpeg?auto=compress&cs=tinysrgb&w=900" alt="Uñas con diseño floral" loading="lazy" referrerpolicy="no-referrer"></div>
+          <span class="toma">TOMA 04 · FLOR A PINCEL</span>
+        </div>
+        <div class="frame">
+          <div class="ph"><img src="https://images.pexels.com/photos/29004934/pexels-photo-29004934/free-photo-of-trendy-hand-with-artistic-nail-art-on-denim.jpeg?auto=compress&cs=tinysrgb&w=900" alt="Nail art artístico sobre mezclilla" loading="lazy" referrerpolicy="no-referrer"></div>
+          <span class="toma">TOMA 05 · JELLY VERANO</span>
+        </div>
+      </div>
+    </div>
+    <div class="scene-fade"></div>
+  </section>
+
+  <!-- ACTO IV — EL BRILLO -->
+  <section class="scene" id="scene-brillo" aria-label="Acto IV: El brillo">
+    <div class="camera">
+      <div class="footage" id="brillo-footage">
+        <img src="https://images.pexels.com/photos/13577781/pexels-photo-13577781.jpeg?auto=compress&cs=tinysrgb&w=1600"
+             alt="Superficie metálica roja brillante" loading="lazy" referrerpolicy="no-referrer">
+      </div>
+      <canvas id="glitter" aria-hidden="true"></canvas>
+      <p id="brillo-tag">LA ÚLTIMA CAPA ES LA QUE FIRMA</p>
+      <h2 id="brillo-title">EL BRILLO</h2>
+      <p id="brillo-sub">Chrome líquido, glazed, cat-eye. El acabado es el autógrafo.</p>
+    </div>
+    <div class="scene-fade"></div>
+  </section>
+
+  <!-- ACTO V — LA CITA -->
+  <section class="scene" id="scene-cita" aria-label="Acto V: La cita">
+    <div class="camera">
+      <div class="footage" id="cita-footage">
+        <img src="https://images.pexels.com/photos/7013643/pexels-photo-7013643.jpeg?auto=compress&cs=tinysrgb&w=1600&h=1000&fit=crop"
+             alt="Esmalte líquido brillante derramado" loading="lazy" referrerpolicy="no-referrer">
+      </div>
+      <div class="precio-shot" id="precio-1"><div class="servicio">GEL DE AUTOR</div><div class="desde">DESDE $450 MXN</div></div>
+      <div class="precio-shot" id="precio-2"><div class="servicio">CHROME · CAT-EYE</div><div class="desde">DESDE $580 MXN</div></div>
+      <div class="precio-shot" id="precio-3"><div class="servicio">ARTE A PINCEL</div><div class="desde">PIEZA ÚNICA · COTIZA</div></div>
+      <div id="cita-final">
+        <div class="pregunta">¿Este viernes?</div>
+        <div class="horario">MAR – SÁB · 10:00 – 19:00 · CITAS LIMITADAS POR SEMANA</div>
+        <a class="cta" href="#agenda" id="cta-main">AGENDAR CITA</a>
+      </div>
+    </div>
+    <div class="scene-fade"></div>
+  </section>
+
+  <!-- CRÉDITOS -->
+  <section class="scene" id="scene-creditos" aria-label="Créditos">
+    <div class="camera">
+      <div id="credits-col">
+        <div class="credit"><div class="rol">DIRECCIÓN Y PINCEL</div><div class="nombre">LACA Estudio</div></div>
+        <div class="credit"><div class="rol">PROTAGONISTA</div><div class="nombre">Tus Manos</div></div>
+        <div class="credit"><div class="rol">COLOR</div><div class="nombre">Cereza Nº 7</div></div>
+        <div class="credit"><div class="rol">EFECTOS ESPECIALES</div><div class="nombre">Aurora Chrome &amp; Cat-Eye</div></div>
+        <div class="credit"><div class="rol">VESTUARIO</div><div class="nombre">Capa Base · Capa Color · Top Coat</div></div>
+        <div class="credit"><div class="rol">LOCACIÓN</div><div class="nombre">La Silla Junto a la Ventana</div></div>
+        <div class="credit"><div class="rol">PRODUCCIÓN EJECUTIVA</div><div class="nombre">El Secado UV</div></div>
+      </div>
+      <div id="endcard">
+        <div class="marca">LACA</div>
+        <p class="lema">Cada set es un estreno.</p>
+        <a class="cta" href="#agenda" id="cta-end">AGENDAR CITA</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ PLAYER ============ -->
+<footer id="player" aria-label="Controles de reproducción">
+  <button id="btn-play" type="button" aria-label="Reproducir / pausar" aria-pressed="false">
+    <svg id="ico-play" width="11" height="12" viewBox="0 0 11 12" fill="currentColor"><path d="M0 0 L11 6 L0 12 Z"/></svg>
+    <svg id="ico-pause" width="10" height="12" viewBox="0 0 10 12" fill="currentColor" style="display:none"><rect width="3.4" height="12"/><rect x="6.6" width="3.4" height="12"/></svg>
+  </button>
+  <span id="timecode">TC 00:00:00</span>
+  <div id="track">
+    <div id="track-rail"></div>
+    <div id="track-fill"></div>
+    <div id="track-thumb"></div>
+    <div id="ticks"></div>
+    <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Línea de tiempo de la película">
+  </div>
+  <span id="acto-label">ACTO I — LA MANO</span>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollToPlugin.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  var REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var MOBILE = window.matchMedia("(max-width: 768px)").matches;
+  var RUNTIME = 135; // 02:15 de "metraje"
+  var rand = function(a,b){ return a + Math.random()*(b-a); };
+
+  var parser = new DOMParser();
+  function setMarkup(el, str){
+    var doc = parser.parseFromString("<div>" + str + "</div>", "text/html");
+    var nodes = Array.prototype.slice.call(doc.body.firstChild.childNodes);
+    el.replaceChildren.apply(el, nodes);
+  }
+
+  function splitChars(){
+    document.querySelectorAll("[data-split]").forEach(function(el){
+      var text = el.textContent;
+      el.setAttribute("aria-label", text);
+      var html = text.split("").map(function(c){
+        if (c === " ") return '<span class="ch" aria-hidden="true">&nbsp;</span>';
+        return '<span class="mask-line"><span class="ch" aria-hidden="true">'+c+'</span></span>';
+      }).join("");
+      setMarkup(el, html);
+    });
+  }
+
+  function buildGrain(){
+    var c = document.createElement("canvas");
+    c.width = c.height = 160;
+    var g = c.getContext("2d");
+    var img = g.createImageData(160,160);
+    for (var i=0;i<img.data.length;i+=4){
+      var v = (Math.random()*255)|0;
+      img.data[i] = img.data[i+1] = img.data[i+2] = v;
+      img.data[i+3] = 255;
+    }
+    g.putImageData(img,0,0);
+    document.getElementById("grain").style.backgroundImage = "url(" + c.toDataURL() + ")";
+  }
+
+  splitChars();
+  buildGrain();
+
+  /* ============ VERSIÓN EDITORIAL ESTÁTICA ============ */
+  if (REDUCED){
+    document.body.classList.add("rm");
+    return;
+  }
+
+  /* ============ CINE (scroll-only, sin gating) ============ */
+  gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+  window.scrollTo(0,0);
+
+  var PIN = MOBILE
+    ? { mano:"+=170%", color:"+=170%", arte:"+=220%", brillo:"+=150%", cita:"+=190%", creditos:"+=140%" }
+    : { mano:"+=230%", color:"+=220%", arte:"+=280%", brillo:"+=200%", cita:"+=240%", creditos:"+=180%" };
+
+  var subText = document.getElementById("sub-text");
+  var currentSub = "";
+  function setSub(txt){
+    if (txt === currentSub) return;
+    currentSub = txt;
+    if (txt){ subText.textContent = txt; subText.classList.add("visible"); }
+    else { subText.classList.remove("visible"); }
+  }
+  function bindCues(st, cues){
+    var prev = st.vars.onUpdate;
+    st.vars.onUpdate = function(self){
+      if (prev) prev(self);
+      var p = self.progress, found = "";
+      for (var i=0;i<cues.length;i++){
+        if (p >= cues[i].f && p < cues[i].t){ found = cues[i].txt; break; }
+      }
+      if (self.isActive || found) setSub(found);
+    };
+  }
+
+  var hudActo = document.getElementById("hud-acto");
+  var actoLabel = document.getElementById("acto-label");
+  function setActo(name){ hudActo.textContent = name; actoLabel.textContent = name; }
+
+  var sceneSTs = [];
+  function sceneTimeline(sel, endStr, actoName){
+    var tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: sel, start: "top top", end: endStr,
+        pin: true, scrub: 1, anticipatePin: 1,
+        onToggle: function(self){ if (self.isActive) setActo(actoName); }
+      }
+    });
+    sceneSTs.push({ st: tl.scrollTrigger, name: actoName });
+    return tl;
+  }
+
+  /* ---- ACTO I: LA MANO ---- */
+  (function(){
+    var tl = sceneTimeline("#scene-mano", PIN.mano, "ACTO I — LA MANO");
+    tl.fromTo("#mano-footage", {scale:1.16, xPercent:2},{scale:1, xPercent:-2, duration:3.4, ease:"none"}, 0)
+      .fromTo("#mano-tag", {opacity:0},{opacity:1, duration:.4, ease:"none"}, .25)
+      .fromTo("#mano-title .ch", {yPercent:118},{yPercent:0, duration:.8, stagger:.06, ease:"power2.out"}, .4)
+      .fromTo("#mano-sub", {opacity:0, y:22},{opacity:1, y:0, duration:.6, ease:"expo.out"}, 1.3)
+      .to("#mano-sub", {opacity:0, duration:.4, ease:"none"}, 2.5)
+      .to("#mano-title .ch", {yPercent:-125, duration:.5, stagger:.03, ease:"power2.in"}, 2.7)
+      .to("#mano-tag", {opacity:0, duration:.3, ease:"none"}, 2.7)
+      .to("#scene-mano .scene-fade", {opacity:1, duration:.35, ease:"none"}, 3.2);
+    bindCues(tl.scrollTrigger, [
+      {f:.07,t:.3,txt:"Toda sesión empieza igual: una mano y una decisión."},
+      {f:.4,t:.62,txt:"Sesenta minutos. Diez lienzos diminutos."},
+      {f:.68,t:.9,txt:"Esto no es mantenimiento. Es dirección de arte."}
+    ]);
+  })();
+
+  /* ---- ACTO II: EL COLOR ---- */
+  (function(){
+    var tl = sceneTimeline("#scene-color", PIN.color, "ACTO II — EL COLOR");
+    tl.fromTo("#color-footage", {scale:1.14, yPercent:3},{scale:1.02, yPercent:-2, duration:3.6, ease:"none"}, 0)
+      /* whip-pans de color: cada panel barre y sale */
+      .fromTo("#panel-cereza", {xPercent:101},{xPercent:0, duration:.55, ease:"power3.out"}, .5)
+      .to("#panel-cereza", {xPercent:-101, duration:.55, ease:"power3.in"}, 1.25)
+      .fromTo("#panel-leche", {xPercent:101},{xPercent:0, duration:.55, ease:"power3.out"}, 1.3)
+      .to("#panel-leche", {xPercent:-101, duration:.55, ease:"power3.in"}, 2.05)
+      .fromTo("#panel-chrome", {xPercent:101},{xPercent:0, duration:.55, ease:"power3.out"}, 2.1)
+      .to("#panel-chrome", {xPercent:-101, duration:.55, ease:"power3.in"}, 2.85)
+      .fromTo("#color-caption", {opacity:0},{opacity:1, duration:.4, ease:"none"}, 3.0)
+      .to("#color-caption", {opacity:0, duration:.3, ease:"none"}, 3.5)
+      .to("#scene-color .scene-fade", {opacity:1, duration:.4, ease:"none"}, 3.6);
+    bindCues(tl.scrollTrigger, [
+      {f:.05,t:.14,txt:"El color no se escoge con los ojos. Se escoge con la semana que viene."}
+    ]);
+  })();
+
+  /* ---- ACTO III: EL ARTE (filmstrip travelling) ---- */
+  (function(){
+    var tl = sceneTimeline("#scene-arte", PIN.arte, "ACTO III — EL ARTE");
+    var strip = document.getElementById("strip");
+    tl.fromTo("#strip-head .ch", {yPercent:118},{yPercent:0, duration:.6, stagger:.05, ease:"power2.out"}, 0)
+      .fromTo(strip, {x:function(){ return window.innerWidth*0.55; }},
+        {x:function(){ return -(strip.scrollWidth - window.innerWidth + window.innerWidth*0.12); },
+         duration:3.4, ease:"none"}, .3)
+      .to("#strip-head .ch", {yPercent:-125, duration:.4, stagger:.02, ease:"power2.in"}, 3.4)
+      .to("#scene-arte .scene-fade", {opacity:1, duration:.4, ease:"none"}, 3.75);
+    bindCues(tl.scrollTrigger, [
+      {f:.1,t:.32,txt:"El pincel más fino exige el trazo más lento."},
+      {f:.4,t:.62,txt:"Cada set se diseña una sola vez. Para una sola clienta."},
+      {f:.7,t:.92,txt:"Seis tomas. Ninguna repetida."}
+    ]);
+  })();
+
+  /* ---- ACTO IV: EL BRILLO ---- */
+  (function(){
+    var tl = sceneTimeline("#scene-brillo", PIN.brillo, "ACTO IV — EL BRILLO");
+    tl.fromTo("#brillo-footage", {scale:1.05},{scale:1.22, duration:3.2, ease:"none"}, 0)
+      .fromTo("#brillo-footage img", {filter:"saturate(.88) contrast(1.06) sepia(.08) blur(6px)"},
+        {filter:"saturate(.88) contrast(1.06) sepia(.08) blur(0px)", duration:.8, ease:"none"}, 0)
+      .fromTo("#brillo-tag", {opacity:0},{opacity:1, duration:.4, ease:"none"}, .5)
+      .fromTo("#brillo-title", {opacity:0, y:34},{opacity:1, y:0, duration:.7, ease:"expo.out"}, .7)
+      .fromTo("#brillo-title", {backgroundPosition:"0% 0%"},{backgroundPosition:"100% 0%", duration:2.2, ease:"none"}, .7)
+      .fromTo("#brillo-sub", {opacity:0, y:18},{opacity:1, y:0, duration:.5, ease:"expo.out"}, 1.4)
+      .to("#brillo-sub", {opacity:0, duration:.4, ease:"none"}, 2.6)
+      /* iris de salida */
+      .fromTo("#scene-brillo .scene-fade",
+        {opacity:1, clipPath:"circle(0% at 50% 50%)"},
+        {clipPath:"circle(120% at 50% 50%)", duration:.55, ease:"none"}, 3.0);
+    bindCues(tl.scrollTrigger, [
+      {f:.12,t:.4,txt:"Chrome líquido. Glazed. Aurora."},
+      {f:.5,t:.8,txt:"El brillo correcto se ve desde la otra mesa."}
+    ]);
+
+    /* partículas de brillo (canvas) */
+    var canvas = document.getElementById("glitter");
+    var ctx = canvas.getContext("2d");
+    var parts = [], active = false;
+    function resize(){ canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+    resize();
+    window.addEventListener("resize", resize);
+    for (var i=0;i<48;i++){
+      parts.push({ x:rand(0,1), y:rand(0,1), ph:rand(0,6.28), sp:rand(1.5,5), r:rand(.6,1.8) });
+    }
+    ScrollTrigger.create({
+      trigger: "#scene-brillo", start: "top bottom", end: "bottom top",
+      onToggle: function(self){ active = self.isActive; }
+    });
+    var t = 0;
+    gsap.ticker.add(function(){
+      if (!active) return;
+      t += 0.016;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for (var i=0;i<parts.length;i++){
+        var p = parts[i];
+        var tw = Math.max(0, Math.sin(t*p.sp + p.ph));
+        if (tw <= 0.02) continue;
+        var x = p.x*canvas.width, y = p.y*canvas.height, r = p.r*(0.6+tw);
+        ctx.globalAlpha = tw*.9;
+        ctx.strokeStyle = "rgba(246,240,236,.95)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x-r*3, y); ctx.lineTo(x+r*3, y);
+        ctx.moveTo(x, y-r*3); ctx.lineTo(x, y+r*3);
+        ctx.stroke();
+        ctx.globalAlpha = tw;
+        ctx.fillStyle = "#F6F0EC";
+        ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    });
+  })();
+
+  /* ---- ACTO V: LA CITA ---- */
+  (function(){
+    var tl = sceneTimeline("#scene-cita", PIN.cita, "ACTO V — LA CITA");
+    tl.fromTo("#cita-footage", {scale:1.12},{scale:1, duration:4.2, ease:"none"}, 0);
+    var shots = ["#precio-1","#precio-2","#precio-3"];
+    shots.forEach(function(sel, i){
+      var at = .3 + i*.85;
+      tl.fromTo(sel, {opacity:0, scale:.95},{opacity:1, scale:1, duration:.35, ease:"expo.out"}, at)
+        .to(sel, {opacity:0, duration:.3, ease:"none"}, at + .55);
+    });
+    tl.fromTo("#cita-final", {opacity:0, y:26},{opacity:1, y:0, duration:.6, ease:"expo.out"}, 3.1);
+    bindCues(tl.scrollTrigger, [
+      {f:.06,t:.28,txt:"Tres servicios. Una silla. Cero prisa."},
+      {f:.72,t:.95,txt:"Las citas de esta semana se abren el lunes a las 10:00."}
+    ]);
+  })();
+
+  /* ---- CRÉDITOS ---- */
+  (function(){
+    var tl = sceneTimeline("#scene-creditos", PIN.creditos, "CRÉDITOS");
+    tl.fromTo("#credits-col", {yPercent:110},{yPercent:-130, duration:2.9, ease:"none"}, 0)
+      .fromTo("#endcard", {opacity:0},{opacity:1, duration:.5, ease:"none"}, 2.95)
+      .to({}, {duration:.8}, 3.45);
+  })();
+
+  /* ============ GRANO (jitter 12fps) ============ */
+  (function(){
+    var grain = document.getElementById("grain");
+    setInterval(function(){
+      gsap.set(grain, { x: (Math.random()*80 - 40) | 0, y: (Math.random()*80 - 40) | 0 });
+    }, 85);
+  })();
+
+  /* ============ PLAYER ============ */
+  var seek = document.getElementById("seek");
+  var fill = document.getElementById("track-fill");
+  var thumb = document.getElementById("track-thumb");
+  var tc = document.getElementById("timecode");
+  var seeking = false;
+
+  function fmtTC(p){
+    var s = p * RUNTIME;
+    var mm = String(Math.floor(s/60)).padStart(2,"0");
+    var ss = String(Math.floor(s%60)).padStart(2,"0");
+    var ff = String(Math.floor((s%1)*24)).padStart(2,"0");
+    return "TC " + mm + ":" + ss + ":" + ff;
+  }
+
+  ScrollTrigger.create({
+    start: 0, end: "max",
+    onUpdate: function(self){
+      var p = self.progress;
+      fill.style.transform = "translateY(-50%) scaleX(" + p + ")";
+      thumb.style.left = (p*100).toFixed(3) + "%";
+      tc.textContent = fmtTC(p);
+      if (!seeking) seek.value = Math.round(p*1000);
+    }
+  });
+
+  function placeTicks(){
+    var box = document.getElementById("ticks");
+    var max = ScrollTrigger.maxScroll(window);
+    box.replaceChildren();
+    sceneSTs.forEach(function(item){
+      var frac = item.st.start / max;
+      if (frac <= 0.001) return;
+      var el = document.createElement("span");
+      el.className = "tick";
+      el.style.left = (frac*100).toFixed(2) + "%";
+      el.title = item.name;
+      box.appendChild(el);
+    });
+  }
+  ScrollTrigger.addEventListener("refresh", placeTicks);
+
+  seek.addEventListener("input", function(){
+    seeking = true;
+    var max = ScrollTrigger.maxScroll(window);
+    window.scrollTo(0, (seek.value/1000) * max);
+  });
+  seek.addEventListener("change", function(){ seeking = false; });
+  seek.addEventListener("pointerup", function(){ seeking = false; });
+
+  /* play opcional: la película también se reproduce sola */
+  var playing = false, lastT = 0;
+  var icoPlay = document.getElementById("ico-play");
+  var icoPause = document.getElementById("ico-pause");
+  var btnPlay = document.getElementById("btn-play");
+
+  function playTick(t){
+    if (!playing) return;
+    var dt = (t - lastT) / 1000; lastT = t;
+    if (dt > 0 && dt < .25){
+      var max = ScrollTrigger.maxScroll(window);
+      window.scrollBy(0, (max / RUNTIME) * dt);
+      if (window.scrollY >= max - 2){ setPlaying(false); return; }
+    }
+    requestAnimationFrame(playTick);
+  }
+  function setPlaying(on){
+    playing = on;
+    btnPlay.setAttribute("aria-pressed", String(on));
+    icoPlay.style.display = on ? "none" : "block";
+    icoPause.style.display = on ? "block" : "none";
+    if (on){ lastT = performance.now(); requestAnimationFrame(playTick); }
+  }
+  btnPlay.addEventListener("click", function(){ setPlaying(!playing); });
+  ["wheel","touchstart"].forEach(function(ev){
+    window.addEventListener(ev, function(){ if (playing) setPlaying(false); }, {passive:true});
+  });
+  window.addEventListener("keydown", function(e){
+    if (e.code === "Space" && !e.target.closest("button, a, input")){
+      e.preventDefault();
+      setPlaying(!playing);
+    }
+  });
+
+  /* ============ APERTURA: sin gating, el scroll manda ============ */
+  document.getElementById("player").classList.add("on");
+  gsap.timeline()
+    .to("#letterbox-top, #letterbox-bottom", {scaleY:1, duration:.8, ease:"expo.out"}, .2)
+    .to("#hud, #player", {opacity:1, duration:.5, ease:"none"}, .6);
+})();
+</script>
+</body>
+</html>
